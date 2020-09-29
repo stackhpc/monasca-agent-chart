@@ -1,0 +1,180 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ template "fullname" . }}
+  labels:
+    app: {{ template "fullname" . }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"
+    component: "{{ template "fullname" . }}"
+spec:
+  selector:
+    matchLabels:
+      component: "{{ template "fullname" . }}"
+      app: {{ template "fullname" . }}
+  template:
+    metadata:
+      labels:
+        component: "{{ template "fullname" . }}"
+        app: {{ template "fullname" . }}
+    spec:
+      hostNetwork: true
+      volumes:
+        - name: rootfs
+          hostPath:
+            path: /
+        - name: var-run
+          hostPath:
+            path: /var/run
+        - name: sys
+          hostPath:
+            path: /sys
+        - name: var-lib-docker
+          hostPath:
+            path: /var/lib/docker
+        - name: dev-disk
+          hostPath:
+            path: /dev/disk
+        {{- if .Values.fluentd.enabled }}
+        - name: fluent-conf
+          configMap:
+            name: {{ template "fullname" . }}-fluent-conf
+        {{- end }}
+      containers:
+        - name: {{ template "name" . }}-collector
+          image: "{{ .Values.collector.image.repository }}:{{ .Values.collector.image.tag }}"
+          imagePullPolicy: {{ .Values.collector.image.pullPolicy }}
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+          volumeMounts:
+            - name: rootfs
+              mountPath: /rootfs
+            - name: var-run
+              mountPath: /var/run
+            - name: sys
+              mountPath: /sys
+              readOnly: true
+            - name: var-lib-docker
+              mountPath: /var/lib/docker
+              readOnly: true
+            - name: dev-disk
+              mountPath: /dev/disk
+              readOnly: true
+          env:
+            - name: AGENT_POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: AGENT_POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: INSECURE
+              value: {{ .Values.insecure | quote }}
+            - name: OS_AUTH_URL
+              value: {{ .Values.keystone.url | quote }}
+            - name: OS_USERNAME
+              value: {{ .Values.keystone.os_username | quote }}
+            - name: OS_USER_DOMAIN_NAME
+              value: {{ .Values.keystone.os_user_domain_name | quote }}
+            - name: OS_PASSWORD
+              value: {{ .Values.keystone.os_password | quote }}
+            - name: OS_PROJECT_NAME
+              value: {{ .Values.keystone.os_project_name | quote }}
+            - name: OS_PROJECT_DOMAIN_NAME
+              value: {{ .Values.keystone.os_project_domain_name | quote }}
+            - name: LOG_LEVEL
+              value: {{ .Values.log_level | quote }}
+            - name: FORWARDER_URL
+              value: "http://127.0.0.1:{{ .Values.forwarder_port }}"
+            - name: FORWARDER_PORT
+              value: {{ .Values.forwarder_port | quote }}
+            - name: HOST
+              value: "true"
+            - name: DOCKER
+              value: "true"
+            - name: DOCKER_ROOT
+              value: "/rootfs"
+            - name: DOCKER_SOCKET
+              value: "unix://var/run/docker.sock"
+        - name: {{ template "name" . }}-forwarder
+          image: "{{ .Values.forwarder.image.repository }}:{{ .Values.forwarder.image.tag }}"
+          imagePullPolicy: {{ .Values.forwarder.image.pullPolicy }}
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+          env:
+            - name: AGENT_POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: AGENT_POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: INSECURE
+              value: {{ .Values.insecure | quote }}
+            - name: OS_AUTH_URL
+              value: {{ .Values.keystone.url | quote }}
+            - name: OS_USERNAME
+              value: {{ .Values.keystone.os_username | quote }}
+            - name: OS_USER_DOMAIN_NAME
+              value: {{ .Values.keystone.os_user_domain_name | quote }}
+            - name: OS_PASSWORD
+              value: {{ .Values.keystone.os_password | quote }}
+            - name: OS_PROJECT_NAME
+              value: {{ .Values.keystone.os_project_name | quote }}
+            - name: OS_PROJECT_DOMAIN_NAME
+              value: {{ .Values.keystone.os_project_domain_name | quote }}
+            - name: MONASCA_URL
+              value: {{ .Values.monasca_url | quote }}
+            - name: LOG_LEVEL
+              value: {{ .Values.log_level | quote }}
+            - name: FORWARDER_URL
+              value: "http://127.0.0.1:{{ .Values.forwarder_port }}"
+            - name: FORWARDER_PORT
+              value: {{ .Values.forwarder_port | quote }}
+        - name: {{ template "name" . }}-statsd
+          image: "{{ .Values.statsd.image.repository }}:{{ .Values.statsd.image.tag }}"
+          imagePullPolicy: {{ .Values.statsd.image.pullPolicy }}
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+          env:
+            - name: AGENT_POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: AGENT_POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: LOG_LEVEL
+              value: {{ .Values.log_level | quote }}
+            - name: FORWARDER_URL
+              value: "http://127.0.0.1:{{ .Values.forwarder_port }}"
+            - name: FORWARDER_PORT
+              value: {{ .Values.forwarder_port | quote }}
+            - name: STATSD_PORT
+              value: {{ .Values.statsd_port | quote }}
+          volumeMounts:
+            - mountPath: "/fluentd/etc/"
+              name: fluent-conf
+        {{- if .Values.fluentd.enabled }}
+        - name: {{ template "name" . }}-fluentd
+          image: "{{ .Values.fluentd.image.repository }}:{{ .Values.fluentd.image.tag }}"
+          imagePullPolicy: {{ .Values.fluentd.image.pullPolicy }}
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+          volumeMounts:
+            - mountPath: "/fluentd/etc/"
+              name: fluent-conf
+          env:
+            - name: AGENT_POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: AGENT_POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+         {{- end }}

@@ -1,0 +1,45 @@
+name: agent
+collector:
+  image:
+    repository: stackhpc/agent-collector
+    tag: latest
+    pullPolicy: Always
+forwarder:
+  image:
+    repository: stackhpc/agent-forwarder
+    tag: latest
+    pullPolicy: Always
+statsd:
+  image:
+    repository: stackhpc/agent-statsd
+    tag: latest
+    pullPolicy: Always
+fluentd:
+  enabled: true
+  image:
+    repository: stackhpc/monasca-fluentd
+    tag: latest
+    pullPolicy: Always
+insecure: False
+log_level: WARN
+forwarder_port: 17123
+statsd_port: 8125
+keystone:
+  os_username: mini-mon
+  os_user_domain_name: Default
+  os_password: password
+  os_project_name: mini-mon
+  os_project_domain_name: Default
+  os_domain_id: default
+  url: http://keystone:5000/v3
+monasca_log_url: http://monasca-log-api:5607
+monasca_url: http://monasca-api:8082/v2.0
+resources:
+  requests:
+    memory: 256Mi
+    cpu: 100m
+  limits:
+    memory: 512Mi
+    cpu: 500m
+rbac:
+  enabled: true
