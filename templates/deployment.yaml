@@ -1,5 +1,5 @@
 apiVersion: apps/v1
-kind: DaemonSet
+kind: Deployment
 metadata:
   name: {{ template "fullname" . }}
   labels:
@@ -7,20 +7,20 @@ metadata:
     chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
     release: "{{ .Release.Name }}"
     heritage: "{{ .Release.Service }}"
-    component: "{{ template "fullname" . }}-daemonset"
+    component: "{{ template "fullname" . }}-deployment"
 spec:
   selector:
     matchLabels:
-      component: "{{ template "fullname" . }}-daemonset"
+      component: "{{ template "fullname" . }}-deployment"
       app: {{ template "fullname" . }}
   template:
     metadata:
       labels:
-        component: "{{ template "fullname" . }}-daemonset"
+        component: "{{ template "fullname" . }}-deployment"
         app: {{ template "fullname" . }}
     spec:
       containers:
-        - name: {{ template "name" . }}-collector-daemonset
+        - name: {{ template "name" . }}-collector-deployment
           image: "{{ .Values.collector.image.repository }}:{{ .Values.collector.image.tag }}"
           imagePullPolicy: {{ .Values.collector.image.pullPolicy }}
           resources:
@@ -34,24 +34,20 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
-            - name: KUBERNETES
-              value: {{ .Values.kubernetes.enabled | quote }}
-            - name: KUBERNETES_TIMEOUT
-              value: {{ .Values.kubernetes.timeout | quote }}
-            - name: KUBERNETES_LABELS
-              value: {{ .Values.kubernetes.kubernetes_labels | quote }}
+            - name: KUBERNETES_API
+              value: {{ .Values.kubernetes_api.enabled | quote }}
+            - name: KUBERNETES_API_TIMEOUT
+              value: {{ .Values.kubernetes_api.timeout | quote }}
+            - name: KUBERNETES_API_LABELS
+              value: {{ .Values.kubernetes_api.kubernetes_labels | quote }}
             - name: PROMETHEUS
-              value: {{ .Values.prometheus.auto_detect_pod_endpoints | quote }}
+              value: {{ .Values.prometheus.auto_detect_service_endpoints | quote }}
             - name: PROMETHEUS_TIMEOUT
               value: {{ .Values.prometheus.timeout | quote }}
             - name: PROMETHEUS_DETECT_METHOD
-              value: pod
+              value: service
             - name: PROMETHEUS_KUBERNETES_LABELS
               value: {{ .Values.prometheus.kubernetes_labels | quote }}
-            - name: CADVISOR
-              value: {{ .Values.cadvisor.enabled | quote }}
-            - name: CADVISOR_TIMEOUT
-              value: {{ .Values.cadvisor.timeout | quote }}
             - name: OS_AUTH_URL
               value: {{ .Values.keystone.url | quote }}
             - name: OS_USERNAME
@@ -72,6 +68,12 @@ spec:
             - name: KUBERNETES_NAMESPACE_ANNOTATIONS
               value: {{ .Values.namespace_annotations | quote}}
             {{- end}}
+            {{- if .Values.kubernetes_api.storage.parameter_dimensions }}
+            - name: STORAGE_PARAMETERS_DIMENSIONS
+              value: {{ .Values.kubernetes_api.storage.parameter_dimensions | quote}}
+            {{- end}}
+            - name: REPORT_PERSISTENT_STORAGE
+              value: {{ .Values.kubernetes_api.storage.report | quote }}
             {{- if .Values.dimensions }}
             - name: DIMENSIONS
               value: {{ .Values.dimensions | quote}}
@@ -84,14 +86,12 @@ spec:
               value: {{ .Values.collector.pool_full_max_retries | quote }}
             - name: SUB_COLLECTION_WARN
               value: {{ .Values.collector.sub_collection_warn | quote }}
+          {{- if .Values.plugins.deployment }}
           volumeMounts:
-            - name: rootfs
-              mountPath: /rootfs
-          {{- if .Values.plugins.daemonset }}
             - name: agent-config
               mountPath: /plugins.d
           {{- end}}
-        - name: {{ template "name" . }}-forwarder-daemonset
+        - name: {{ template "name" . }}-forwarder-deployment
           image: "{{ .Values.forwarder.image.repository }}:{{ .Values.forwarder.image.tag }}"
           imagePullPolicy: {{ .Values.forwarder.image.pullPolicy }}
           resources:
@@ -133,12 +133,9 @@ spec:
               value: "true"
             - name: NON_LOCAL_TRAFFIC
               value: {{ .Values.forwarder.non_local_traffic | quote }}
+      {{- if .Values.plugins.deployment }}
       volumes:
-        - name: rootfs
-          hostPath:
-            path: /
-      {{- if .Values.plugins.daemonset }}
         - name: agent-config
           configMap:
-            name: {{ template "fullname" . }}-daemonset-plugins
+            name: {{ template "fullname" . }}-deployment-plugins
       {{- end}}

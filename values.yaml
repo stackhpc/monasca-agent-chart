@@ -1,39 +1,50 @@
 name: agent
 collector:
   image:
-    repository: stackhpc/agent-collector
-    tag: latest
-    pullPolicy: Always
+    repository: monasca/agent-collector
+    tag: master-20180112-162543
+    pullPolicy: IfNotPresent
+  check_freq: 30
+  num_collector_threads: 1
+  pool_full_max_retries: 4
+  sub_collection_warn: 6
 forwarder:
   image:
-    repository: stackhpc/agent-forwarder
-    tag: latest
-    pullPolicy: Always
-statsd:
-  image:
-    repository: stackhpc/agent-statsd
-    tag: latest
-    pullPolicy: Always
-fluentd:
-  enabled: true
-  image:
-    repository: stackhpc/monasca-fluentd
-    tag: latest
-    pullPolicy: Always
+    repository: monasca/agent-forwarder
+    tag: master-20180206-002800
+    pullPolicy: IfNotPresent
+  max_batch_size: 0
+  max_measurement_buffer_size: -1
+  backlog_send_rate: 5
+  non_local_traffic: "true"
 insecure: False
 log_level: WARN
-forwarder_port: 17123
-statsd_port: 8125
 keystone:
   os_username: mini-mon
   os_user_domain_name: Default
   os_password: password
   os_project_name: mini-mon
   os_project_domain_name: Default
-  os_domain_id: default
-  url: http://keystone:5000/v3
-monasca_log_url: http://monasca-log-api:5607
-monasca_url: http://monasca-api:8082/v2.0
+  url: http://keystone:35357/v3
+monasca_url: http://monasca-api:8070/v2.0
+prometheus:
+  auto_detect_pod_endpoints: true
+  auto_detect_service_endpoints: true
+  kubernetes_labels: 'app'
+  timeout: 3
+kubernetes_api:
+  enabled: true
+  kubernetes_labels: 'app'
+  timeout: 3
+  storage:
+    report: true
+kubernetes:
+  enabled: true
+  kubernetes_labels: 'app'
+  timeout: 3
+cadvisor:
+  enabled: true
+  timeout: 3
 resources:
   requests:
     memory: 256Mi
@@ -41,5 +52,8 @@ resources:
   limits:
     memory: 512Mi
     cpu: 500m
+plugins:
+  deployment:
+  daemonset:
 rbac:
-  enabled: true
+  enabled: false
