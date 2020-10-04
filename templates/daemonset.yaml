@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
         - name: {{ template "name" . }}-collector-daemonset
-          image: "{{ .Values.collector.image.repository }}:{{ .Values.collector.image.tag }}"
+          image: "{{ .Values.collector.image.repository }}:{{ default .Chart.AppVersion .Values.collector.image.tag }}"
           imagePullPolicy: {{ .Values.collector.image.pullPolicy }}
           resources:
 {{ toYaml .Values.resources | indent 12 }}
@@ -92,7 +92,7 @@ spec:
               mountPath: /plugins.d
           {{- end}}
         - name: {{ template "name" . }}-forwarder-daemonset
-          image: "{{ .Values.forwarder.image.repository }}:{{ .Values.forwarder.image.tag }}"
+          image: "{{ .Values.forwarder.image.repository }}:{{ default .Chart.AppVersion .Values.forwarder.image.tag }}"
           imagePullPolicy: {{ .Values.forwarder.image.pullPolicy }}
           resources:
 {{ toYaml .Values.resources | indent 12 }}
